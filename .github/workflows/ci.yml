@@ -38,23 +38,11 @@ jobs:
           source .venv/bin/activate
           uv pip install -e .
 
-      - name: Start Docker services
-        run: |
-          docker compose up -d httpbin
-          echo "Waiting for HTTPBin to be healthy..."
-          sleep 10
-
-      - name: Wait for HTTPBin healthcheck
-        run: |
-          timeout 60 sh -c 'until docker ps | grep healthy | grep -q httpbin; do sleep 2; done'
-          echo "HTTPBin is healthy!"
-
       - name: Run Robot Framework tests
         run: |
           source .venv/bin/activate
           robot --outputdir reports \
                 --loglevel INFO \
-                --variable HTTPBIN_BASE_URL:http://localhost \
                 tests/
         continue-on-error: true
 
@@ -64,10 +52,6 @@ jobs:
           source .venv/bin/activate
           robotdashboard -f reports -d robot_results.db -n robot_dashboard.html
         continue-on-error: true
-
-      - name: Stop Docker services
-        if: always()
-        run: docker compose down -v
 
       - name: Upload Robot Framework reports
         if: always()
@@ -156,37 +140,6 @@ jobs:
                 body: comment
               });
             }
-
-  docker-test:
-    name: Run Tests in Docker
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build and run tests in Docker
-        run: |
-          docker compose up --build --abort-on-container-exit test-runner
-
-      - name: Copy reports from container
-        if: always()
-        run: |
-          mkdir -p reports
-          docker cp test-runner:/app/reports/. reports/ || true
-
-      - name: Stop Docker services
-        if: always()
-        run: docker compose down -v
-
-      - name: Upload Docker test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-test-reports
-          path: reports/
-          retention-days: 30
 
   lint:
     name: Code Quality
