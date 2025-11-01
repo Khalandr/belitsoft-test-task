@@ -101,12 +101,8 @@ jobs:
           keep_files: false
           enable_jekyll: false
 
-      - name: Publish test results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        with:
-          files: reports/output.xml
-          check_name: Robot Framework Test Results
+      # Note: EnricoMi/publish-unit-test-result-action only supports JUnit XML format
+      # Robot Framework uses its own XML format, so we use robotdashboard instead
 
       - name: Comment PR with test results
         if: github.event_name == 'pull_request' && always()
