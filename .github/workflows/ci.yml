@@ -40,7 +40,7 @@ jobs:
 
       - name: Start Docker services
         run: |
-          docker-compose up -d httpbin
+          docker compose up -d httpbin
           echo "Waiting for HTTPBin to be healthy..."
           sleep 10
 
@@ -67,7 +67,7 @@ jobs:
 
       - name: Stop Docker services
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
 
       - name: Upload Robot Framework reports
         if: always()
@@ -168,7 +168,7 @@ jobs:
 
       - name: Build and run tests in Docker
         run: |
-          docker-compose up --build --abort-on-container-exit test-runner
+          docker compose up --build --abort-on-container-exit test-runner
 
       - name: Copy reports from container
         if: always()
@@ -178,7 +178,7 @@ jobs:
 
       - name: Stop Docker services
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
 
       - name: Upload Docker test reports
         if: always()
