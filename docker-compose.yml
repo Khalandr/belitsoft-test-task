@@ -33,9 +33,7 @@ services:
       echo 'Waiting for HTTPBin to be ready...' &&
       sleep 5 &&
       echo 'Running Robot Framework tests...' &&
-      robot --outputdir /app/reports
-            --loglevel INFO
-            /app/tests/
+      robot --outputdir /app/reports --loglevel INFO /app/tests/
       "
 
 networks:
