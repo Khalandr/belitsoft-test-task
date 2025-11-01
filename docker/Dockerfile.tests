@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
 
 # Install UV
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Copy project files
 COPY pyproject.toml ./
@@ -20,12 +19,13 @@ COPY resources/ ./resources/
 COPY tests/ ./tests/
 
 # Install Python dependencies using UV
-RUN uv venv && \
+RUN . $HOME/.cargo/env && \
+    uv venv && \
     . .venv/bin/activate && \
     uv pip install -e .
 
-# Activate virtual environment by default
-ENV PATH="/app/.venv/bin:$PATH"
+# Add UV and venv to PATH
+ENV PATH="/root/.cargo/bin:/app/.venv/bin:${PATH}"
 
 # Create reports directory
 RUN mkdir -p /app/reports
