@@ -1,0 +1,225 @@
+name: Robot Framework Tests CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install -e .
+
+      - name: Start Docker services
+        run: |
+          docker-compose up -d httpbin
+          echo "Waiting for HTTPBin to be healthy..."
+          sleep 10
+
+      - name: Wait for HTTPBin healthcheck
+        run: |
+          timeout 60 sh -c 'until docker ps | grep healthy | grep -q httpbin; do sleep 2; done'
+          echo "HTTPBin is healthy!"
+
+      - name: Run Robot Framework tests
+        run: |
+          source .venv/bin/activate
+          robot --outputdir reports \
+                --loglevel INFO \
+                --variable HTTPBIN_BASE_URL:http://localhost \
+                tests/
+        continue-on-error: true
+
+      - name: Generate Dashboard
+        if: always()
+        run: |
+          source .venv/bin/activate
+          robotdashboard -f reports -d robot_results.db -n robot_dashboard.html
+        continue-on-error: true
+
+      - name: Stop Docker services
+        if: always()
+        run: docker-compose down -v
+
+      - name: Upload Robot Framework reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-reports
+          path: |
+            reports/report.html
+            reports/log.html
+            reports/output.xml
+            robot_dashboard.html
+            robot_results.db
+          retention-days: 30
+
+      - name: Prepare GitHub Pages deployment
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p gh-pages
+          cp robot_dashboard.html gh-pages/
+          cp robot_results.db gh-pages/
+
+          # Create index.html that redirects to dashboard
+          cat > gh-pages/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=./robot_dashboard.html">
+            <title>Robot Framework Dashboard</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="./robot_dashboard.html">Robot Framework Dashboard</a>...</p>
+          </body>
+          </html>
+          EOF
+
+          # Prevent Jekyll processing
+          touch gh-pages/.nojekyll
+
+      - name: Deploy Dashboard to GitHub Pages
+        if: always() && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+          publish_branch: gh-pages
+          keep_files: false
+          enable_jekyll: false
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: reports/output.xml
+          check_name: Robot Framework Test Results
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'reports/report.html';
+            const repoName = context.repo.repo;
+            const owner = context.repo.owner;
+
+            if (fs.existsSync(reportPath)) {
+              const comment = `## 🤖 Robot Framework Test Results
+
+              Test execution completed!
+
+              📊 **View Dashboard:**
+              - [Live Dashboard on GitHub Pages](https://${owner}.github.io/${repoName}/)
+              - [Download artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+              **Artifacts include:**
+              - Robot Framework HTML Report
+              - Robot Dashboard (Historical Trends)
+              - Test logs and output
+              `;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  docker-test:
+    name: Run Tests in Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and run tests in Docker
+        run: |
+          docker-compose up --build --abort-on-container-exit test-runner
+
+      - name: Copy reports from container
+        if: always()
+        run: |
+          mkdir -p reports
+          docker cp test-runner:/app/reports/. reports/ || true
+
+      - name: Stop Docker services
+        if: always()
+        run: docker-compose down -v
+
+      - name: Upload Docker test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-test-reports
+          path: reports/
+          retention-days: 30
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install UV
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install -e ".[dev]"
+
+      - name: Run Ruff linter
+        run: |
+          source .venv/bin/activate
+          ruff check resources/ tests/
+        continue-on-error: true
+
+      - name: Run Black formatter check
+        run: |
+          source .venv/bin/activate
+          black --check resources/ tests/
+        continue-on-error: true

@@ -1,0 +1,42 @@
+[project]
+name = "httpbin-test-automation"
+version = "1.0.0"
+description = "Comprehensive Robot Framework test automation for HTTPBin API"
+requires-python = ">=3.12"
+authors = [
+    { name = "Test Automation Team" }
+]
+
+dependencies = [
+    "robotframework>=7.0",
+    "robotframework-requests>=0.9.7",
+    "robotframework-pythonlibcore>=4.4.1",
+    "robotframework-dashboard>=1.2.1",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "black>=23.12.1",
+    "ruff>=0.1.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["resources", "tests"]
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.robot]
+outputdir = "reports"
+loglevel = "INFO"

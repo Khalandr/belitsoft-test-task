@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  httpbin:
+    image: kennethreitz/httpbin:latest
+    container_name: httpbin-test-service
+    ports:
+      - "80:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/status/200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - test-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tests
+    container_name: test-runner
+    environment:
+      HTTPBIN_BASE_URL: http://httpbin
+      LOG_LEVEL: INFO
+    volumes:
+      - ./reports:/app/reports
+    depends_on:
+      httpbin:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: >
+      sh -c "
+      echo 'Waiting for HTTPBin to be ready...' &&
+      sleep 5 &&
+      echo 'Running Robot Framework tests...' &&
+      robot --outputdir /app/reports
+            --loglevel INFO
+            /app/tests/
+      "
+
+networks:
+  test-network:
+    driver: bridge

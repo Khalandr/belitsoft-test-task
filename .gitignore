@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# Robot Framework
+reports/
+log.html
+report.html
+output.xml
+*.log
+selenium-screenshot-*.png
+.pabotsuitenames
+
+# Allure
+allure-results/
+allure-report/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+*.env
+!.env.example
+
+# Docker
+.docker/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# UV
+uv.lock
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+
+# Documentation
+claude.md
+
+# Robot Dashboard
+robot_results.db
+robot_dashboard.html
+robot_dashboard_*.html
