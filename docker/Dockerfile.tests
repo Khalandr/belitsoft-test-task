@@ -16,15 +16,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Copy project files
 COPY pyproject.toml ./
-COPY config/ ./config/
-COPY libraries/ ./libraries/
 COPY resources/ ./resources/
 COPY tests/ ./tests/
 
 # Install Python dependencies using UV
 RUN uv venv && \
     . .venv/bin/activate && \
-    uv pip install -r pyproject.toml
+    uv pip install -e .
 
 # Activate virtual environment by default
 ENV PATH="/app/.venv/bin:$PATH"
